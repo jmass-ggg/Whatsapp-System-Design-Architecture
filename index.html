@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      body {
+        font-family: Arial;
+        max-width: 700px;
+        margin: 50px auto;
+      }
+      #username {
+        margin-bottom: 10px;
+      }
+      #login {
+        margin-bottom: 20px;
+      }
+      #container {
+        display: none;
+      }
+      #messages {
+        border: 1px solid #ccc;
+        height: 400px;
+        overflow-y: auto;
+        padding: 10px;
+        margin-bottom: 20px;
+      }
+      .message {
+            padding: 8px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+        }
+      .received {
+            background: #eee;
+        }
+
+        .sent {
+            background: #d1ffd6;
+            text-align: right;
+        }
+
+        #messageInput {
+            width: 70%;
+        }
+    </style>
+  </head>
+  <body>
+    <div id="login">
+      <h1>Login</h1>
+      <input id="usernameInput" placeholder="enter username" />
+      <button onclick="connect()">Connect</button>
+    </div>
+    <div id="container">
+      <h1>Message</h1>
+      <p>
+        Logged in as:
+        <strong id="currentUser"></strong>
+      </p>
+      <input id="receiverInput" placeholder="Receiver username" />
+      <div id="messages"></div>
+      <input id="messageInput" placeholder="Message" />
+      
+      <button onclick="sendMessage()">Send</button>
+    </div>
+    <script>
+      let socket = null;
+      let currentUser = null;
+
+      function connect() {
+        const usernameInput = document.getElementById("usernameInput");
+        const username = usernameInput.value.trim();
+
+        if (!username) {
+          alert("Enter the username ");
+          return;
+        }
+        currentUser = username;
+
+        socket = new WebSocket("ws://localhost:8000");
+        socket.onopen = () => {
+          console.log("WebSocket connected");
+
+
+          socket.send(username);
+
+          document.getElementById("login").style.display = "none";
+
+          document.getElementById("container").style.display = "block";
+
+          document.getElementById("currentUser").textContent = username;
+        };
+        socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log("Received:", data);
+          if (data.type === "connected") {
+
+                    addMessage(
+                        "SYSTEM: " + data.message,
+                        "received"
+                    );
+
+                }
+                else if(data.type === "message"){
+                    addMessage(
+                         data.sender +
+                        ": " +
+                        data.message,
+                        "received"
+                    )
+                }
+                else if(data.type === "sent"){
+                    addMessage(
+                        "You: " +
+                        data.message,
+                        "sent"
+                    )
+                }
+                 else if (data.type === "error") {
+
+                    addMessage(
+                        "ERROR: " +
+                        data.message,
+                        "received"
+                    );
+
+                }
+                
+            
+        };
+        socket.onerror = (error) => {
+
+                console.log(
+                    "WebSocket error:",
+                    error
+                );
+
+            };
+
+
+            socket.onclose = () => {
+
+                console.log(
+                    "WebSocket connection closed"
+                );
+
+            };
+      }
+      function sendMessage(){
+        const receiverInput=document.getElementById("receiverInput");
+        const messageInput=document.getElementById("messageInput");
+
+        const receiver=receiverInput.value.trim();
+        const message=messageInput.value.trim();
+
+         if (!receiver) {
+
+                alert("Enter receiver");
+
+                return;
+            }
+
+
+            if (!message) {
+
+                return;
+            }
+
+
+
+            const data = {
+
+                receiver: receiver,
+
+                message: message
+
+            };
+
+
+
+            socket.send(
+                JSON.stringify(data)
+            );
+
+
+
+            messageInput.value = "";
+      }
+      function addMessage(text,className){
+        const messages=document.getElementById("messages");
+        const div =document.createElement("div");
+
+        div.className = "message " + className;
+        div.textContent =  text;
+        messages.appendChild(div);
+
+        messages.scrollTop =
+                messages.scrollHeight;
+
+      }
+      
+    </script>
+  </body>
+</html>
