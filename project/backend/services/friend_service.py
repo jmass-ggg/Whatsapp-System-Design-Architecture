@@ -5,7 +5,7 @@ import uuid
 
 
 async def send_request(db:AsyncSession,sender_id:uuid.UUID,receiver_id: uuid.UUID)->FriendRequest:
-    existing_user=db.execute(
+    existing_user=await db.execute(
         select(FriendRequest).where(
             or_(
                 and_(FriendRequest.sender_id == sender_id,FriendRequest.receiver_id == receiver_id),
@@ -44,8 +44,8 @@ async def send_request(db:AsyncSession,sender_id:uuid.UUID,receiver_id: uuid.UUI
     return req
 
 
-async def request_response(db:AsyncSession,request_id:uuid.UUID,received_id:uuid.UUID,action:FriendStatus)->FriendRequest:
-    result=db.execute(
+async def respond_request(db:AsyncSession,request_id:uuid.UUID,received_id:uuid.UUID,action:FriendStatus)->FriendRequest:
+    result=await db.execute(
         select(FriendRequest).where(
             FriendRequest.id == request_id,
             FriendRequest.receiver_id == request_id,
@@ -59,3 +59,12 @@ async def request_response(db:AsyncSession,request_id:uuid.UUID,received_id:uuid
     await db.commit()
     await db.refresh(req)
     return req
+
+async def get_pending_requests(db:AsyncSession,user_id:uuid.UUID)->list[FriendRequest]:
+    result=await db.execute(
+        select(FriendRequest).where(
+            FriendRequest.receiver_id == user_id,
+            FriendRequest.status == FriendStatus.PENDING
+        )
+    )
+    return result.scalars().all()
