@@ -15,7 +15,12 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database import Base
+from enum import Enum
 
+class FriendStatus(str, Enum):
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    PENDING = "pending"
 
 class FriendRequest(Base):
     __tablename__ = "friend_requests"
@@ -52,13 +57,17 @@ class FriendRequest(Base):
         index=True,
     )
 
-    status: Mapped[str] = mapped_column(
-        String(20),
-        nullable=False,
-        default="pending",
-        server_default="pending",
-        index=True,
-    )
+    status: Mapped[FriendStatus] = mapped_column(
+    SQLEnum(
+        FriendStatus,
+        name="friend_status",
+        values_callable=lambda enum: [e.value for e in enum],
+    ),
+    nullable=False,
+    default=FriendStatus.PENDING,
+    server_default=FriendStatus.PENDING.value,
+    index=True,
+)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

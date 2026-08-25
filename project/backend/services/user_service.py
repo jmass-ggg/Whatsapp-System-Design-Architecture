@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.user import User
 import uuid
+
 async def get_user_by_email(db:AsyncSession,email:str)->User | None:
     user= await db.execute(select(User).where(User.email == email))
     return user.scalar_one_or_none()
