@@ -5,6 +5,7 @@ import uuid
 
 from sqlalchemy import (
     DateTime,
+    Enum as SQLEnum,
     ForeignKey,
     String,
     UniqueConstraint,

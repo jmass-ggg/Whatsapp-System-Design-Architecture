@@ -28,7 +28,7 @@ async def register(body:RegisterRequest,db:AsyncSession=Depends(get_db)):
     )
     db.add(user)
     await db.commit()
-    await db.refresh()
+    await db.refresh(user)
     token=create_access_token(user.id)
     return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
 

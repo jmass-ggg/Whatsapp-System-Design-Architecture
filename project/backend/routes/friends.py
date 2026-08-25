@@ -20,7 +20,7 @@ async def send_friend_request(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-@router.patch("/request/{request_id}/accept",response_class=FriendRequestResponse)
+@router.patch("/request/{request_id}/accept",response_model=FriendRequestResponse)
 async def accept_request(
     request_id:uuid.UUID,
     db: AsyncSession = Depends(get_db),

@@ -12,7 +12,7 @@ from backend.services.user_service import get_user_by_email, get_user_by_usernam
 from backend.services.auth_service import hash_password, verify_password, create_access_token
 from backend.models.user import User
 from backend.dependencies import get_current_user
-router=APIRouter(prefix="",responses=list[UserResponse])
+router=APIRouter(prefix="")
 
 @router.post("/search",response_model=list[UserResponse])
 async def search_username( q: str = Query(..., min_length=1),

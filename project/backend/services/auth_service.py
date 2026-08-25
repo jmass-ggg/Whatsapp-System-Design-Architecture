@@ -27,7 +27,17 @@ def create_access_token(user_id:uuid)->str:
 def decode_access_token(token:str)->str:
     try:
         payload=jwt.decode(token,SECRET_KEY,algorithms=ALGORITHM)
-        return payload
-    except JWTError:
+        user_id = payload.get("user_id")
+
+        if not user_id:
+            return None
+
+        return uuid.UUID(user_id)
+
+    except (JWTError, ValueError, TypeError):
         return None
+
+
+def decode_token(token: str) -> uuid.UUID | None:
+    return decode_access_token(token)
     
