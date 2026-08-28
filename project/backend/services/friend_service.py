@@ -3,7 +3,6 @@ from backend.models.friend_request import FriendRequest,FriendStatus
 from sqlalchemy import select, or_, and_
 import uuid
 
-
 async def send_request(db:AsyncSession,sender_id:uuid.UUID,receiver_id: uuid.UUID)->FriendRequest:
     existing_user=await db.execute(
         select(FriendRequest).where(
