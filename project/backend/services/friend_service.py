@@ -19,22 +19,14 @@ async def send_request(db:AsyncSession,sender_id:uuid.UUID,receiver_id: uuid.UUI
         
             
     )
-    if existing_user.scalar_one_or_none():
-        raise ValueError("Friend requests is already exists")
-    if db.execute(
-        select(FriendRequest).where(
-                    or_(
-                        and_(FriendRequest.sender_id == sender_id,FriendRequest.receiver_id == receiver_id),
-                        and_(
-                            FriendRequest.sender_id == receiver_id ,FriendRequest.receiver_id == sender_id
-                        ),
-                        and_(
-                            FriendRequest.status == "rejected"
-                        )
-                    )
-                )
-    ):
-        raise ValueError("Friend requests rejected")
+    existing_request=existing_user.scalars().first()
+    if existing_request:
+        if existing_request.status == FriendStatus.PENDING:
+            raise ValueError("User request is pending")
+        elif existing_request.status == FriendStatus.REJECTED:
+                    raise ValueError("User request is rejected")
+        elif existing_request.status == FriendStatus.ACCEPTED:
+                            raise ValueError("User already exists")
     
     req=FriendRequest(sender_id=sender_id,receiver_id=receiver_id,status=FriendStatus.PENDING)
     db.add(req)

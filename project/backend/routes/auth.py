@@ -29,8 +29,7 @@ async def register(body:RegisterRequest,db:AsyncSession=Depends(get_db)):
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    token=create_access_token(user.id)
-    return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
+    return UserResponse.model_validate(user)
 
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
