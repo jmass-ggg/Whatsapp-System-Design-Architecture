@@ -39,11 +39,11 @@ async def respond_request(db:AsyncSession,request_id:uuid.UUID,received_id:uuid.
     result=await db.execute(
         select(FriendRequest).where(
             FriendRequest.id == request_id,
-            FriendRequest.receiver_id == request_id,
+            FriendRequest.receiver_id == received_id,
             FriendRequest.status == FriendStatus.PENDING
         )
     )
-    req=result.scalar_one_or_none()
+    req=result.scalars().first()
     if not req:
         raise ValueError("Request not found or already accepted")
     req.status=FriendStatus.ACCEPTED  if action == FriendStatus.ACCEPTED else FriendStatus.REJECTED

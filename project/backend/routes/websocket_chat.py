@@ -15,12 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import AsyncSessionLocal
 from backend.models.chat import (
     ConversationMember,
-    Message,
+    Message,Conversation
 )
 from backend.realtime import manager
 from backend.services.auth_service import decode_access_token
 from backend.services.user_service import get_user_by_id
-
+from backend.models.friend_request import FriendRequest,FriendStatus
 
 router = APIRouter(tags=["websocket"])
 
@@ -30,13 +30,15 @@ class AuthenticationEvent(BaseModel):
     
 class SendMessageEvent(BaseModel):
     type: Literal["message.send"]
-    conversation_id: uuid.UUID
+    receiver_id: uuid.UUID
     client_message_id: uuid.UUID
     content: str = Field(
         min_length=1,
         max_length=4000,
     )
     
+from sqlalchemy import select, or_, and_
+
 async def authenticate_websocket(
     websocket:WebSocket,
     db:AsyncSession
@@ -68,33 +70,81 @@ async def authenticate_websocket(
         WebSocketDisconnect,
     ):
         return None
+
+async def get_or_create_direct_message(
+    db:AsyncSession,
+    sender_id: uuid.UUID,
+    receiver_id: uuid.UUID,
+)->Conversation:
+    friendship= await db.scalar(
+         select(FriendRequest).where(
+                    or_(
+                        and_(FriendRequest.sender_id == sender_id,FriendRequest.receiver_id == receiver_id),
+                        and_(
+                            FriendRequest.sender_id == receiver_id ,FriendRequest.receiver_id == sender_id
+                        ),
+                        and_(
+                            FriendRequest.status == FriendStatus.ACCEPTED,
+                        )
+                    )
+                )
+    )
+    if  friendship is None:
+        raise PermissionError(
+           "You can only message accepted friends"
+        )
+        
+    sorted_user_ids = sorted(
+        [str(sender_id), str(receiver_id)]
+    )
+    direct_key = f"{sorted_user_ids[0]}:{sorted_user_ids[1]}"
+    conversation=await db.scalar(
+        select(Conversation).where(
+            Conversation.direct_key  == direct_key
+        )
+    )
+    if conversation is not None:
+        return conversation
     
+    conversation=Conversation(direct_key=direct_key)
+    db.add(conversation)
+    await db.flush()
+    db.add_all(
+        [
+             ConversationMember(
+                conversation_id=conversation.id,
+                user_id=sender_id,
+            ),
+            ConversationMember(
+                conversation_id=conversation.id,
+                user_id=receiver_id,
+            ),
+        ]
+    )
+    db.flush()
+    return conversation
+        
+
 async def save_message(
     db:AsyncSession,
     sender_id:uuid.UUID,
     event:SendMessageEvent
 ):
-    membership=await db.scalar(
-        select(ConversationMember).where(
-            ConversationMember.conversation_id == event.conversation_id,
-            ConversationMember.user_id == sender_id
-        )
-    )
-    if membership is None:
-        raise PermissionError(
-            "You are not a member of this conversation"
-        )
+   
     content=event.content.strip()
     
     if not content:
         raise ValueError("Message connot be empty")
-    
+    conversation=await get_or_create_direct_message(
+        db,sender_id=sender_id,
+        receiver_id=event.receiver_id
+    )
     message_id=uuid.uuid4()
     insert_statement = (
         insert(Message)
         .values(
             id=message_id,
-            conversation_id=event.conversation_id,
+            conversation_id=conversation.id,
             sender_id=sender_id,
             client_message_id=event.client_message_id,
             content=content,
@@ -125,8 +175,8 @@ async def save_message(
         )
     )
     members_result=await db.execute(
-        select(ConversationMember.user_id).where(
-            ConversationMember.conversation_id == event.conversation_id
+        select(ConversationMember).where(
+            ConversationMember.conversation_id == conversation.id
         )
         
     )
@@ -135,6 +185,7 @@ async def save_message(
     )
 
     await db.commit()
+    await db.refresh(message)
 
     return message, recipient_ids, True
     

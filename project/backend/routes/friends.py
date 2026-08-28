@@ -5,6 +5,7 @@ from backend.dependencies import get_current_user
 from backend.schemas.friend_request import SendRequestBody, FriendRequestResponse
 from backend.services.friend_service import send_request, respond_request, get_pending_requests
 from backend.models.user import User
+from backend.models.friend_request import FriendRequest,FriendStatus
 import uuid
 
 router = APIRouter(prefix="/friends", tags=["friends"])
@@ -27,7 +28,7 @@ async def accept_request(
     current_user: User = Depends(get_current_user)
 ):
     try:
-        return await respond_request(db,request_id,current_user.id,"accept")
+        return await respond_request(db,request_id,current_user.id,FriendStatus.ACCEPTED)
     except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         
@@ -38,7 +39,7 @@ async def decline_request(
     current_user: User = Depends(get_current_user)
 ):
     try:
-        return await respond_request(db, request_id, current_user.id, "decline")
+        return await respond_request(db, request_id, current_user.id, FriendStatus.REJECTED)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     
